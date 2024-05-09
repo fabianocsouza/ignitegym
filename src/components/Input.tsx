@@ -1,7 +1,7 @@
 import { FormControl, IInputProps, Input as InputNativeBase  } from "native-base";
 
 type Props = IInputProps & {
-  errorMessage?: string | null;
+  errorMessage?: string | null | any;
 }
 
 export function Input({ errorMessage = null , isInvalid, ...rest }: Props ) {
