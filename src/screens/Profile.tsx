@@ -15,6 +15,7 @@ import { Controller, useForm } from 'react-hook-form';
 import { useAuth } from "@hooks/useAuth";
 import { api } from "@services/api";
 import { AppError } from "@utils/AppError";
+import defaultUserPhoto from '@assets/userPhotoDefault.png';
 
 const PHOTO_SIZE = 33;
 
@@ -49,7 +50,7 @@ const profileSchema = yup.object({
 export  function Profile() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [photoIsLoading, setPhotoIsLoading] = useState(false);
-  const [userPhoto, setUserPhoto] = useState('https://github.com/fabianocsouza.png');
+
 
   const toast = useToast();
   const { user, updateUserProfile } = useAuth();
@@ -79,7 +80,6 @@ export  function Profile() {
       const photoInfo = await FileSystem.getInfoAsync(photoSelected.assets[0].uri);
 
       if(photoInfo.exists && (photoInfo.size / 1024/ 1024) > 5 ){
-        
        return toast.show({
         title: "Essa imagem é muito grande. Escolha uma de até 5MB.",
         placement: "top",
@@ -87,7 +87,33 @@ export  function Profile() {
        })
       }
       
-      setUserPhoto(photoSelected.assets[0].uri);
+      const fileExtension = photoSelected.assets[0].uri.split('.').pop();
+
+      const photoFile = {
+        name: `${user.name.replace(/\s/g,'').trim()}.${fileExtension}`.toLowerCase(),
+        uri: photoSelected.assets[0].uri,
+        type: `${photoSelected.assets[0].type}/${fileExtension}`
+      } as any;
+
+      const userPhotoUploadForm = new FormData();
+      userPhotoUploadForm.append('avatar', photoFile);
+
+      const avatarUpdatedResponse = await api.patch('/users/avatar', userPhotoUploadForm, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      })
+
+      toast.show({
+        title: 'Foto atualizada!',
+        placement: 'top',
+        bgColor: 'green.500'
+      });
+
+      const userUpdated = user;
+      userUpdated.avatar = avatarUpdatedResponse.data.avatar;
+      updateUserProfile(userUpdated);
+  
     }
     
    } catch (error) {
@@ -144,7 +170,11 @@ export  function Profile() {
                 endColor="gray.400"
               />
             : <UserPhoto
-              source={{uri : userPhoto}}
+            source={ 
+              user.avatar 
+              ? {uri : `${api.defaults.baseURL}/avatar/${user.avatar}` }
+              :  defaultUserPhoto
+            }
               alt="Imagem do usuário"
               size={PHOTO_SIZE}
               mr={4}
